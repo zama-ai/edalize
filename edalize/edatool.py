@@ -228,13 +228,15 @@ class Edatool(object):
         self.configure_post()
 
     def configure_pre(self):
-        pass
+        if "pre_configure" in self.hooks:
+            self._run_scripts(self.hooks["pre_configure"], "pre_configure")
 
     def configure_main(self):
         pass
 
     def configure_post(self):
-        pass
+        if "post_configure" in self.hooks:
+            self._run_scripts(self.hooks["post_configure"], "post_configure")
 
     def build(self):
         self.build_pre()
