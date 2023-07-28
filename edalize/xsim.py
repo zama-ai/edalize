@@ -22,7 +22,7 @@ all: xsim.dir/$(TARGET)/xsimk
 
 xsim.dir/$(TARGET)/xsimk:
 	xvlog -work work ${XILINX_VIVADO}/data/verilog/src/glbl.v
-	xelab work.glbl $(TOPLEVEL) -initfile=${XILINX_VIVADO}/data/xsim/ip/xsim_ip.ini -L work -L xpm -prj $(TARGET).prj -snapshot $(TARGET) $(VLOG_DEFINES) $(VLOG_INCLUDES) $(GEN_PARAMS) $(XELAB_OPTIONS)
+	xelab -timescale 1ns/1ps work.glbl $(TOPLEVEL) -initfile=${XILINX_VIVADO}/data/xsim/ip/xsim_ip.ini -L work -L xpm -prj $(TARGET).prj -snapshot $(TARGET) $(VLOG_DEFINES) $(VLOG_INCLUDES) $(GEN_PARAMS) $(XELAB_OPTIONS)
 
 run: xsim.dir/$(TARGET)/xsimk
 	xsim $(XSIM_OPTIONS) $(TARGET) $(EXTRA_OPTIONS) -R
