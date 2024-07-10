@@ -33,18 +33,23 @@ RM ?= rm
 INCS := -I$(MODEL_TECH)/../include
 
 VSIM ?= $(MODEL_TECH)/vsim
+VOPT ?= $(MODEL_TECH)/vopt
 
 TOPLEVEL      := {toplevel}
 VPI_MODULES   := {modules}
 PARAMETERS    ?= {parameters}
 PLUSARGS      ?= {plusargs}
 VSIM_OPTIONS  ?= {vsim_options}
+VOPT_OPTIONS  ?= {vopt_options}
+
 EXTRA_OPTIONS ?= $(VSIM_OPTIONS) $(addprefix -g,$(PARAMETERS)) $(addprefix +,$(PLUSARGS))
+EXTRA_OPTIONS_VOPT ?= $(VOPT_OPTIONS) $(addprefix -g,$(PARAMETERS)) $(addprefix +,$(PLUSARGS))
 
 all: work $(VPI_MODULES)
 
 run: work $(VPI_MODULES)
-	$(VSIM) -do "run -all; quit -code [expr [coverage attribute -name TESTSTATUS -concise] >= 2 ? [coverage attribute -name TESTSTATUS -concise] : 0]; exit" -c $(addprefix -pli ,$(VPI_MODULES)) $(EXTRA_OPTIONS) $(TOPLEVEL)
+	$(VOPT) $(TOPLEVEL) -o $(TOPLEVEL)_opt -designfile $(TOPLEVEL).bin $(EXTRA_OPTIONS_VOPT)
+	$(VSIM) -do "run -all; quit -code [expr [coverage attribute -name TESTSTATUS -concise] >= 2 ? [coverage attribute -name TESTSTATUS -concise] : 0]; exit" -c $(addprefix -pli ,$(VPI_MODULES)) $(EXTRA_OPTIONS) $(TOPLEVEL)_opt
 
 run-gui: work $(VPI_MODULES)
 	$(VSIM) -gui $(addprefix -pli ,$(VPI_MODULES)) $(EXTRA_OPTIONS) $(TOPLEVEL)
@@ -94,6 +99,11 @@ class Modelsim(Edatool):
                         "name": "vsim_options",
                         "type": "String",
                         "desc": "Additional run options for vsim",
+                    },
+                    {
+                        "name": "vopt_options",
+                        "type": "String",
+                        "desc": "Additional run options for vopt",
                     },
                 ],
             }
@@ -167,6 +177,7 @@ class Modelsim(Edatool):
             _plusargs += ["{}={}".format(key, self._param_value_str(value))]
 
         _vsim_options = self.tool_options.get("vsim_options", [])
+        _vopt_options = self.tool_options.get("vopt_options", [])
 
         _modules = [m["name"] for m in self.vpi_modules]
         _clean_targets = " ".join(["clean_" + m for m in _modules])
@@ -175,6 +186,7 @@ class Modelsim(Edatool):
             parameters=" ".join(_parameters),
             plusargs=" ".join(_plusargs),
             vsim_options=" ".join(_vsim_options),
+            vopt_options=" ".join(_vopt_options),
             modules=" ".join(_modules),
             clean_targets=_clean_targets,
         )
