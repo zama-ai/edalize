@@ -68,8 +68,12 @@ Example snippet of a CAPI2 description file for VCS:
         )
 
         plusargs = []
+        beforearg = ""
         if self.plusarg:
             for key, value in self.plusarg.items():
+                if key == "before":
+                    beforearg = self._param_value_str(value)
+                    continue
                 plusarg = "+" + key
                 if value != True:
                     plusarg += "=" + self._param_value_str(value)
@@ -90,6 +94,7 @@ Example snippet of a CAPI2 description file for VCS:
             "run_options": self.tool_options.get("run_options", []),
             "toplevel": self.toplevel,
             "plusargs": plusargs,
+            "beforearg": beforearg,
         }
 
         self.render_template("Makefile.j2", "Makefile", template_vars)
