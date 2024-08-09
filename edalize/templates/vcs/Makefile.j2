@@ -1,10 +1,16 @@
 all: {{ name }}
 
-{{ name }}: {{ name }}.scr
-	$(EDALIZE_LAUNCHER) vcs -full64 -top {{ toplevel }} -f {{ name }}.scr -o $@ {% for option in vcs_options %} {{ option }}{% endfor %}
+{{ name }}: work
+	$(EDALIZE_LAUNCHER) vcs -full64 work.{{ toplevel }} -o $@ {% for option in vcs_options %} {{ option }}{% endfor %}
 
 run: {{ name }}
 	{{ beforearg }} ./{{ name }} -l vcs.log {% for plusarg in plusargs %} {{ plusarg }} {% endfor %}{% for option in run_options %} {{ option }}{% endfor %}
+
+work: analyze.bash
+	mkdir work
+	echo "WORK  > default" > synopsys_sim.setup
+	echo "default : ./work" >> synopsys_sim.setup
+	bash -x analyze.bash
 
 clean:
 	$(RM) {{ name }}

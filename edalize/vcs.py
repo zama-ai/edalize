@@ -32,6 +32,8 @@ Example snippet of a CAPI2 description file for VCS:
 
     tool_options = {
         "lists": {
+            "vlogan_options": "String",
+            "vhdlan_options": "String",
             "vcs_options": "String",  # compile-time options (passed to VCS)
             "run_options": "String",  # runtime options (passed to simulation)
         }
@@ -47,25 +49,63 @@ Example snippet of a CAPI2 description file for VCS:
                 return True
         return False
 
-    def configure_main(self):
-        def _vcs_filelist_filter(src_file):
-            ft = src_file.file_type
-            # XXX: C source files can be passed to VCS to be compiled into DPI
-            # libraries; passing C sources together with RTL sources is a
-            # workaround until we have proper DPI support
-            # (https://github.com/olofk/fusesoc/issues/311).
-            return (
-                ft.startswith("verilogSource")
-                or ft.startswith("systemVerilogSource")
-                or ft == "cSource"
-                or ft == "cppSource"
-            )
+    def _write_build_rtl_analyze_file(self, bash_main):
+        (src_files, incdirs) = self._get_fileset_files()
+        vlog_include_dirs = ["+incdir+" + d.replace("\\", "/") for d in incdirs]
 
-        self._write_fileset_to_f_file(
-            os.path.join(self.work_root, self.name + ".scr"),
-            include_vlogparams=True,
-            filter_func=_vcs_filelist_filter,
-        )
+        libs = []
+        for f in src_files:
+            if not f.logical_name:
+                f.logical_name = "work"
+            if not f.logical_name in libs:
+                #bash_main.write("vlib {}\n".format(f.logical_name))
+                libs.append(f.logical_name)
+            if f.file_type.startswith("verilogSource") or f.file_type.startswith(
+                "systemVerilogSource"
+            ):
+                cmd = "vlogan"
+                args = []
+
+                args += self.tool_options.get("vlogan_options", [])
+
+                for k, v in self.vlogdefine.items():
+                    args += ["+define+{}={}".format(k, self._param_value_str(v))]
+
+                if f.file_type.startswith("systemVerilogSource"):
+                    args += ["-sverilog"]
+                args += vlog_include_dirs
+            elif f.file_type.startswith("vhdlSource"):
+                cmd = "vhdlan"
+                if f.file_type.endswith("-87"):
+                    args = ["-87"]
+                if f.file_type.endswith("-93"):
+                    args = ["-93"]
+                if f.file_type.endswith("-2008"):
+                    args = ["-2008"]
+                else:
+                    args = []
+
+                args += self.tool_options.get("vhdlan_options", [])
+
+            elif f.file_type == "tclSource":
+                cmd = None
+                tcl_main.write("do {}\n".format(f.name))
+            elif f.file_type == "user":
+                cmd = None
+            else:
+                _s = "{} has unknown file type '{}'"
+                logger.warning(_s.format(f.name, f.file_type))
+                cmd = None
+            if cmd:
+                args += ["-q"]
+                args += ["-full64"]
+                #args += ["-work", f.logical_name]
+                args += [f.name.replace("\\", "/")]
+                bash_main.write("{} {}\n".format(cmd, " ".join(args)))
+
+    def configure_main(self):
+        analyze_script = open(os.path.join(self.work_root, "analyze.bash"), "w")
+        self._write_build_rtl_analyze_file(analyze_script)
 
         plusargs = []
         beforearg = ""
