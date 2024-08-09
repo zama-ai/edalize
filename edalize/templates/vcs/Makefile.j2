@@ -1,7 +1,7 @@
 all: {{ name }}
 
 {{ name }}: work
-	$(EDALIZE_LAUNCHER) vcs -full64 work.{{ toplevel }} -o $@ {% for option in vcs_options %} {{ option }}{% endfor %}
+	$(EDALIZE_LAUNCHER) vcs -full64 work.{{ toplevel }} -o $@ {% for option in vcs_options %}{{ option }}{% endfor %} {% for param in parameters %} -pvalue+{{ param }} {% endfor %}
 
 run: {{ name }}
 	{{ beforearg }} ./{{ name }} -l vcs.log {% for plusarg in plusargs %} {{ plusarg }} {% endfor %}{% for option in run_options %} {{ option }}{% endfor %}

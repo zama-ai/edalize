@@ -107,6 +107,13 @@ Example snippet of a CAPI2 description file for VCS:
         analyze_script = open(os.path.join(self.work_root, "analyze.bash"), "w")
         self._write_build_rtl_analyze_file(analyze_script)
 
+        _parameters = []
+        for key, value in self.vlogparam.items():
+            _parameters += ["{}.{}={}".format(self.toplevel, key, self._param_value_str(value))]
+        for key, value in self.generic.items():
+            _parameters += [
+                "{}.{}={}".format(self.toplevel, key, self._param_value_str(value, bool_is_str=True))
+            ]
         plusargs = []
         beforearg = ""
         if self.plusarg:
@@ -135,6 +142,7 @@ Example snippet of a CAPI2 description file for VCS:
             "toplevel": self.toplevel,
             "plusargs": plusargs,
             "beforearg": beforearg,
+            "parameters": _parameters,
         }
 
         self.render_template("Makefile.j2", "Makefile", template_vars)
