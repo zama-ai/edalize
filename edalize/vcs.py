@@ -106,10 +106,13 @@ Example snippet of a CAPI2 description file for VCS:
     def configure_main(self):
         analyze_script = open(os.path.join(self.work_root, "analyze.bash"), "w")
         self._write_build_rtl_analyze_file(analyze_script)
+        parameter_file = open(os.path.join(self.work_root, "parameters.snps"), "w")
 
         _parameters = []
         for key, value in self.vlogparam.items():
-            _parameters += ["{}.{}={}".format(self.toplevel, key, self._param_value_str(value))]
+            # parameters are not given to Makefile and command line anymore but listed in a file
+            #_parameters += ["{}.{}={}".format(self.toplevel, key, self._param_value_str(value))]
+            parameter_file.write("assign {} {}/{}\n".format(self._param_value_str(value).replace('"', ''), self.toplevel, key))
         for key, value in self.generic.items():
             _parameters += [
                 "{}.{}={}".format(self.toplevel, key, self._param_value_str(value, bool_is_str=True))
@@ -142,7 +145,7 @@ Example snippet of a CAPI2 description file for VCS:
             "toplevel": self.toplevel,
             "plusargs": plusargs,
             "beforearg": beforearg,
-            "parameters": _parameters,
+            #"parameters": _parameters,
         }
 
         self.render_template("Makefile.j2", "Makefile", template_vars)
