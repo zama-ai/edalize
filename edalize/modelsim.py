@@ -42,8 +42,8 @@ PLUSARGS      ?= {plusargs}
 VSIM_OPTIONS  ?= {vsim_options}
 VOPT_OPTIONS  ?= {vopt_options}
 
-EXTRA_OPTIONS ?= $(VSIM_OPTIONS) $(addprefix -G/$(TOPLEVEL)/, $(PARAMETERS)) $(addprefix +,$(PLUSARGS))
-EXTRA_OPTIONS_VOPT ?= $(VOPT_OPTIONS) $(addprefix -G/$(TOPLEVEL)/, $(PARAMETERS)) $(addprefix +,$(PLUSARGS))
+EXTRA_OPTIONS ?= $(VSIM_OPTIONS) $(addprefix +,$(PLUSARGS))
+EXTRA_OPTIONS_VOPT ?= $(VOPT_OPTIONS) $(addprefix -g /$(TOPLEVEL)/, $(PARAMETERS)) $(addprefix +,$(PLUSARGS))
 
 all: work $(VPI_MODULES)
 
