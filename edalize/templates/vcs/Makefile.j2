@@ -1,11 +1,11 @@
 all: {{ name }}
 
 {{ name }}: work
-	$(EDALIZE_LAUNCHER) vcs -full64 -CFLAGS "-I/usr/include/x86_64-linux-gnu" work.{{ toplevel }} -o $@ {% for option in vcs_options %}{{ option }} {% endfor %} -parameters parameters.snps
+	$(EDALIZE_LAUNCHER) vcs -full64 -CFLAGS "-I/usr/include/x86_64-linux-gnu" work.{{ toplevel }} -o $@ {% for option in vcs_options %}{{ option }} {% endfor %} -parameters parameters.snps 2>&1 | tee -a vcs_build.log
 
 
 run: {{ name }}
-	{{ beforearg }} ./{{ name }} -l vcs.log {% for plusarg in plusargs %} {{ plusarg }} {% endfor %}{% for option in run_options %} {{ option }}{% endfor %}
+	{{ beforearg }} ./{{ name }} -l vcs_run.log {% for plusarg in plusargs %} {{ plusarg }} {% endfor %}{% for option in run_options %} {{ option }}{% endfor %}
 
 
 work: analyze.bash
@@ -13,7 +13,7 @@ work: analyze.bash
 	cp ${VCS_HOME}/bin/synopsys_sim.setup .
 	echo "WORK  > default" >> synopsys_sim.setup
 	echo "default : ./work" >> synopsys_sim.setup
-	bash -x analyze.bash
+	bash -x analyze.bash 2>&1 | tee vcs_build.log
 
 clean:
 	$(RM) {{ name }}
