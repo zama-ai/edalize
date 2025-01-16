@@ -1,7 +1,8 @@
 all: {{ name }}
 
 {{ name }}: work
-	$(EDALIZE_LAUNCHER) vcs -full64 -CFLAGS "-I/usr/include/x86_64-linux-gnu" work.{{ toplevel }} -o $@ {% for option in vcs_options %}{{ option }} {% endfor %} -parameters parameters.snps 2>&1 | tee -a vcs_build.log
+	vlogan -sverilog -q -full64 ${XILINX_VIVADO}/data/verilog/src/glbl.v
+	$(EDALIZE_LAUNCHER) vcs -full64 -CFLAGS "-I/usr/include/x86_64-linux-gnu" work.glbl work.{{ toplevel }} -o $@ {% for option in vcs_options %}{{ option }} {% endfor %} -parameters parameters.snps 2>&1 | tee -a vcs_build.log
 
 
 run: {{ name }}
