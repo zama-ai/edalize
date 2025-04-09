@@ -54,8 +54,6 @@ Example snippet of a CAPI2 description file for VCS:
         vlog_include_dirs = ["+incdir+" + d.replace("\\", "/") for d in incdirs]
 
         libs = []
-        vlog = []
-        svlog = []
         for f in src_files:
             if not f.logical_name:
                 f.logical_name = "work"
@@ -65,13 +63,17 @@ Example snippet of a CAPI2 description file for VCS:
             if f.file_type.startswith("verilogSource") or f.file_type.startswith(
                 "systemVerilogSource"
             ):
-                # All the sv and verilog files are compiled together
-                # to be under the same scope. See after the for loop.
-                cmd = None
+                cmd = "vlogan"
+                args = []
+
+                args += self.tool_options.get("vlogan_options", [])
+
+                for k, v in self.vlogdefine.items():
+                    args += ["+define+{}={}".format(k, self._param_value_str(v))]
+
                 if f.file_type.startswith("systemVerilogSource"):
-                    svlog += [f]
-                elif f.file_type.startswith("verilogSource"):
-                    vlog += [f]
+                    args += ["-sverilog"]
+                args += vlog_include_dirs
             elif f.file_type.startswith("vhdlSource"):
                 cmd = "vhdlan"
                 if f.file_type.endswith("-87"):
@@ -100,32 +102,6 @@ Example snippet of a CAPI2 description file for VCS:
                 #args += ["-work", f.logical_name]
                 args += [f.name.replace("\\", "/")]
                 bash_main.write("{} {}\n".format(cmd, " ".join(args)))
-        if (vlog + svlog):
-                cmd = "vlogan"
-                args = []
-
-                args += self.tool_options.get("vlogan_options", [])
-
-                for k, v in self.vlogdefine.items():
-                    args += ["+define+{}={}".format(k, self._param_value_str(v))]
-
-                args += vlog_include_dirs
-                args += ["-q"]
-                args += ["-full64"]
-                #args += ["-work", f.logical_name]
-
-                vargs = args
-                svargs = args.copy()
-                for f in vlog:
-                    vargs += [f.name.replace("\\", "/")]
-                for f in svlog:
-                    svargs += [f.name.replace("\\", "/")]
-
-                if vlog:
-                    bash_main.write("{} {}\n".format(cmd, " ".join(vargs)))
-                if svlog:
-                    bash_main.write("{} {}\n".format(cmd+" -sverilog", " ".join(svargs)))
-
 
     def configure_main(self):
         analyze_script = open(os.path.join(self.work_root, "analyze.bash"), "w")
