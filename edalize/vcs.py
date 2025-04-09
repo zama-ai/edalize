@@ -54,6 +54,8 @@ Example snippet of a CAPI2 description file for VCS:
         vlog_include_dirs = ["+incdir+" + d.replace("\\", "/") for d in incdirs]
 
         libs = []
+        vlog_d = {}
+        svlog_d = {}
         for f in src_files:
             if not f.logical_name:
                 f.logical_name = "work"
@@ -61,19 +63,20 @@ Example snippet of a CAPI2 description file for VCS:
                 #bash_main.write("vlib {}\n".format(f.logical_name))
                 libs.append(f.logical_name)
             if f.file_type.startswith("verilogSource") or f.file_type.startswith(
-                "systemVerilogSource"
-            ):
-                cmd = "vlogan"
-                args = []
-
-                args += self.tool_options.get("vlogan_options", [])
-
-                for k, v in self.vlogdefine.items():
-                    args += ["+define+{}={}".format(k, self._param_value_str(v))]
-
-                if f.file_type.startswith("systemVerilogSource"):
-                    args += ["-sverilog"]
-                args += vlog_include_dirs
+                "systemVerilogSource") or f.file_type.startswith(
+                "SVASource"
+            ) :
+                # All the sv and verilog files are processed later.
+                cmd = None
+                if f.file_type.startswith("systemVerilogSource") or f.file_type.startswith(
+                  "SVASource"):
+                    if (f.logical_name not in svlog_d):
+                        svlog_d[f.logical_name] = []
+                    svlog_d[f.logical_name] += [f]
+                elif f.file_type.startswith("verilogSource"):
+                    if (f.logical_name not in vlog_d):
+                        vlog_d[f.logical_name] = []
+                    vlog_d[f.logical_name] += [f]
             elif f.file_type.startswith("vhdlSource"):
                 cmd = "vhdlan"
                 if f.file_type.endswith("-87"):
@@ -102,6 +105,34 @@ Example snippet of a CAPI2 description file for VCS:
                 #args += ["-work", f.logical_name]
                 args += [f.name.replace("\\", "/")]
                 bash_main.write("{} {}\n".format(cmd, " ".join(args)))
+        if (vlog_d | svlog_d):
+                cmd = "vlogan"
+                args = []
+
+                args += self.tool_options.get("vlogan_options", [])
+
+                for k, v in self.vlogdefine.items():
+                    args += ["+define+{}={}".format(k, self._param_value_str(v))]
+
+                args += vlog_include_dirs
+                args += ["-q"]
+                args += ["-full64"]
+
+                for k in vlog_d.keys():
+                    for f in vlog_d[k]:
+                        vargs = args.copy()
+                        vargs += [f.name.replace("\\", "/")]
+                        bash_main.write("{} {}\n".format(cmd, " ".join(vargs)))
+                # systemVerilog work library
+                # Compile everything that belongs to the same
+                # library under the same scope
+                for k in svlog_d.keys():
+                    vargs = args.copy()
+                    vargs += ["-sverilog"]
+                    for f in svlog_d[k]:
+                        vargs += [f.name.replace("\\", "/")]
+                    bash_main.write("{} {}\n".format(cmd, " ".join(vargs)))
+
 
     def configure_main(self):
         analyze_script = open(os.path.join(self.work_root, "analyze.bash"), "w")
