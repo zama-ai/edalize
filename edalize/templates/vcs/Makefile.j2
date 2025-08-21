@@ -1,6 +1,6 @@
 all: {{ name }}
 
-{{ name }}: work
+{{ name }}: lib
 	vlogan -sverilog -q -full64 ${XILINX_VIVADO}/data/verilog/src/glbl.v
 	$(EDALIZE_LAUNCHER) vcs -full64 -CFLAGS "-I/usr/include/x86_64-linux-gnu" work.glbl work.{{ toplevel }} -o $@ {% for option in vcs_options %}{{ option }} {% endfor %} -parameters parameters.snps 2>&1 | tee -a vcs_build.log
 
@@ -9,11 +9,13 @@ run: {{ name }}
 	{{ beforearg }} ./{{ name }} -l vcs_run.log {% for plusarg in plusargs %} {{ plusarg }} {% endfor %}{% for option in run_options %} {{ option }}{% endfor %}
 
 
-work: analyze.bash
-	mkdir -p work
-	cp ${VCS_HOME}/bin/synopsys_sim.setup .
-	echo "WORK  > default" >> synopsys_sim.setup
-	echo "default : ./work" >> synopsys_sim.setup
+lib: analyze.bash
+	echo LIBRARY_SCAN=TRUE > synopsys_sim.setup
+	{% for lib in libraries %}
+	mkdir -p ./lib/{{lib}}
+	echo "{{lib}} : ./lib/{{lib}}" >> synopsys_sim.setup
+	{% endfor %}
+	echo OTHERS=${VCS_HOME}/bin/synopsys_sim.setup >> synopsys_sim.setup
 	bash -x analyze.bash 2>&1 | tee vcs_build.log
 
 clean:

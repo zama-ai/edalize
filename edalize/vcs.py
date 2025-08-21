@@ -5,6 +5,7 @@
 import os
 import logging
 
+from functools import reduce
 from edalize.edatool import Edatool
 
 logger = logging.getLogger(__name__)
@@ -50,33 +51,71 @@ Example snippet of a CAPI2 description file for VCS:
         return False
 
     def _write_build_rtl_analyze_file(self, bash_main):
-        (src_files, incdirs) = self._get_fileset_files()
-        vlog_include_dirs = ["+incdir+" + d.replace("\\", "/") for d in incdirs]
+        class CompilationUnit:
+            def __init__(self, files, logical_name, file_type):
+                self.files        = files
+                self.logical_name = logical_name if logical_name is not None and \
+                                                    len(logical_name) > 0 \
+                                    else "work"
+                self.file_type    = file_type
 
-        libs = []
-        vlog_d = {}
-        svlog_d = {}
-        for f in src_files:
-            if not f.logical_name:
-                f.logical_name = "work"
-            if not f.logical_name in libs:
-                #bash_main.write("vlib {}\n".format(f.logical_name))
-                libs.append(f.logical_name)
-            if f.file_type.startswith("verilogSource") or f.file_type.startswith(
-                "systemVerilogSource") or f.file_type.startswith(
-                "SVASource"
-            ) :
-                # All the sv and verilog files are processed later.
-                cmd = None
-                if f.file_type.startswith("systemVerilogSource") or f.file_type.startswith(
-                  "SVASource"):
-                    if (f.logical_name not in svlog_d):
-                        svlog_d[f.logical_name] = []
-                    svlog_d[f.logical_name] += [f]
-                elif f.file_type.startswith("verilogSource"):
-                    if (f.logical_name not in vlog_d):
-                        vlog_d[f.logical_name] = []
-                    vlog_d[f.logical_name] += [f]
+            @classmethod
+            def from_file(cls, file):
+                return cls(files=[file], logical_name=file.logical_name, file_type=file.file_type)
+
+            def combine(self, other):
+                if other in self:
+                   return [CompilationUnit(files=self.files + other.files,
+                                           logical_name=self.logical_name,
+                                           file_type=self.file_type)]
+                else:
+                   return [self, other]
+
+            def __contains__(self, other):
+                return self.logical_name == other.logical_name and self.file_type == other.file_type
+
+            def is_rtl(self):
+                return self.file_type.startswith("verilogSource") or \
+                       self.file_type.startswith("systemVerilogSource") or \
+                       self.file_type.startswith("vhdlSource") or \
+                       self.file_type.startswith( "SVASource")
+
+            def __repr__(self):
+                return f"logical_name: {self.logical_name}, file_type: {self.file_type}, " + \
+                       f"files: {','.join((x.name for x in self.files))}"
+
+            def __str__(self):
+                return f"logical_name: {self.logical_name}, file_type: {self.file_type}, " + \
+                       f"files: {len(self.files)}"
+
+        bash_main.write(f"set -e\n")
+
+        (src_files, incdirs) = self._get_fileset_files()
+
+        # Combine files into compilation units
+        units = [ CompilationUnit.from_file(file) for file in src_files ]
+        libs = set(map(lambda x: x.logical_name, units))
+        rtl_units = list(filter(lambda x: x.is_rtl(), units))
+        units = [x for x in units if not x.is_rtl()] + \
+                reduce(lambda acc, x: acc[:-1] + acc[-1].combine(x), rtl_units[1:], [rtl_units[0]])
+
+        bash_main.write("#Compilation units: \n")
+        bash_main.write("\n".join((f"#{x}" for x in units)) + "\n")
+
+        vlog_include_dirs = ["+incdir+" + d.replace("\\", "/") for d in incdirs]
+        vlog_defines      = ["+define+{}={}".format(k, self._param_value_str(v))
+                             for k, v in self.vlogdefine.items()]
+
+        for f in units:
+            if f.file_type.startswith("verilogSource") or \
+               f.file_type.startswith("systemVerilogSource") or \
+               f.file_type.startswith( "SVASource"):
+                cmd = "vlogan"
+                args = list(self.tool_options.get("vlogan_options", []))
+                args += vlog_defines
+                args += vlog_include_dirs
+                if f.file_type.startswith("systemVerilogSource"):
+                    args += ["-sverilog"]
             elif f.file_type.startswith("vhdlSource"):
                 cmd = "vhdlan"
                 if f.file_type.endswith("-87"):
@@ -87,52 +126,22 @@ Example snippet of a CAPI2 description file for VCS:
                     args = ["-2008"]
                 else:
                     args = []
-
                 args += self.tool_options.get("vhdlan_options", [])
-
             elif f.file_type == "tclSource":
                 cmd = None
-                tcl_main.write("do {}\n".format(f.name))
+                tcl_main.write("".join(("do {}\n".format(x.name) for x in f.files)))
             elif f.file_type == "user":
                 cmd = None
             else:
                 _s = "{} has unknown file type '{}'"
-                logger.warning(_s.format(f.name, f.file_type))
+                logger.warning(_s.format(f, f.file_type))
                 cmd = None
             if cmd:
                 args += ["-q"]
                 args += ["-full64"]
-                #args += ["-work", f.logical_name]
-                args += [f.name.replace("\\", "/")]
+                args += ["-work", f.logical_name]
+                args += [x.name.replace("\\", "/") for x in f.files]
                 bash_main.write("{} {}\n".format(cmd, " ".join(args)))
-        if (vlog_d | svlog_d):
-                cmd = "vlogan"
-                args = []
-
-                args += self.tool_options.get("vlogan_options", [])
-
-                for k, v in self.vlogdefine.items():
-                    args += ["+define+{}={}".format(k, self._param_value_str(v))]
-
-                args += vlog_include_dirs
-                args += ["-q"]
-                args += ["-full64"]
-
-                for k in vlog_d.keys():
-                    for f in vlog_d[k]:
-                        vargs = args.copy()
-                        vargs += [f.name.replace("\\", "/")]
-                        bash_main.write("{} {}\n".format(cmd, " ".join(vargs)))
-                # systemVerilog work library
-                # Compile everything that belongs to the same
-                # library under the same scope
-                for k in svlog_d.keys():
-                    vargs = args.copy()
-                    vargs += ["-sverilog"]
-                    for f in svlog_d[k]:
-                        vargs += [f.name.replace("\\", "/")]
-                    bash_main.write("{} {}\n".format(cmd, " ".join(vargs)))
-
 
     def configure_main(self):
         analyze_script = open(os.path.join(self.work_root, "analyze.bash"), "w")
@@ -176,6 +185,7 @@ Example snippet of a CAPI2 description file for VCS:
             "toplevel": self.toplevel,
             "plusargs": plusargs,
             "beforearg": beforearg,
+            "libraries": list(set(x.logical_name for x in src_files if len(x.logical_name))),
             #"parameters": _parameters,
         }
 
