@@ -110,8 +110,8 @@ Example snippet of a CAPI2 description file for VCS:
                 args = []
 
                 args += self.tool_options.get("vlogan_options", [])
-                if self.tool_options.get("uvm", []) is not None:
-                    args+= [f'-ntb_opts {self.tool_options.get("uvm", [])}']
+                if self.tool_options.get("uvm") is not None:
+                    args+= [f'-ntb_opts {self.tool_options.get("uvm")}']
 
                 for k, v in self.vlogdefine.items():
                     args += ["+define+{}={}".format(k, self._param_value_str(v))]
@@ -180,9 +180,9 @@ Example snippet of a CAPI2 description file for VCS:
             "beforearg": beforearg,
             #"parameters": _parameters,
         }
-        if self.tool_options.get("uvm", []) is not None:
-            template_vars["uvm"] = self.tool_options.get("uvm", [])
-            template_vars["test_name"] = self.tool_options.get("test_name", '')
+        if self.tool_options.get("uvm") is not None:
+            template_vars["uvm"] = self.tool_options.get("uvm")
+            template_vars["test_name"] = self.tool_options.get("test_name", 'test_base')
 
         self.render_template("Makefile.j2", "Makefile", template_vars)
 
