@@ -171,6 +171,15 @@ Example snippet of a CAPI2 description file for VCS:
         if self._filelist_has_filetype(src_files, "verilog2001", match_type="exact"):
             vcs_options.append("+v2k")
 
+        c_dpi_files = filter(lambda src: src.file_type == 'cSource', src_files)
+        def extract_c_header(file):
+          if file['is_include_file'] is True and file['file_type'] is 'cSource':
+            return True
+
+        c_hdr_files = filter(lambda f: f['is_include_file'] is True and f['file_type'] is 'cSource', self.files)
+        c_dpi_dir = list(map(lambda f: os.path.dirname(f["name"]),c_hdr_files))
+
+
         template_vars = {
             "name": self.name,
             "vcs_options": vcs_options,
@@ -178,6 +187,8 @@ Example snippet of a CAPI2 description file for VCS:
             "toplevel": self.toplevel,
             "plusargs": plusargs,
             "beforearg": beforearg,
+            'c_dpi_files': c_dpi_files,
+            'c_dpi_dir': c_dpi_dir,
             #"parameters": _parameters,
         }
         if self.tool_options.get("uvm") is not None:
