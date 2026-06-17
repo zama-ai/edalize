@@ -5,7 +5,7 @@ UVM_TESTNAME?={{test_name}}
 
 all: {{ name }}
 
-{%if c_dpi_files %}
+{%if c_dpi_files -%}
 CC = gcc
 DPI_INCDIR ={%for dir in c_dpi_dir%} {{dir}}{%endfor%}
 
@@ -18,15 +18,16 @@ DPI_OBJS  = $(DPI_C_SRC:.c=.o)
 
 libdpi.so : ${DPI_OBJS}
 	${CC} -shared -fPIC -o $@ $^
-{%endif%}
-
+{%-endif%}
 
 {{ name }}: work
 	vlogan -sverilog -q -full64 ${XILINX_VIVADO}/data/verilog/src/glbl.v
 	$(EDALIZE_LAUNCHER) vcs -full64 -CFLAGS "-I/usr/include/x86_64-linux-gnu" work.glbl {%if uvm is defined%} ${VCS_UVM_HOME}/dpi/uvm_dpi.cc {%endif%} work.{{ toplevel }} -o $@ {% for option in vcs_options %}{{ option }} {% endfor %}  {%-if uvm is defined%} -CFLAGS -DVCS{%endif%} -parameters parameters.snps 2>&1 | tee -a vcs_build.log
 
-
-run: {{ name }} {%if c_dpi_files %}libdpi.so
+{%if c_dpi_files %}
+run: {{ name }} libdpi.so
+{%else%}
+run: {{ name }}
 {%endif%}
 	{{ beforearg }} ./{{ name }} -l vcs_run.log {% for plusarg in plusargs %} {{ plusarg }} {% endfor %}{% for option in run_options %} {{ option }}{% endfor %} {%if c_dpi_files %}-sv_lib libdpi{%endif%} {%if uvm is defined%} +UVM_TESTNAME=${UVM_TESTNAME} {%endif%}
 
