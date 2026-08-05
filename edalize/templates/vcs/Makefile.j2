@@ -7,14 +7,16 @@ all: {{ name }}
 
 {%if c_dpi_files -%}
 CC = gcc
+{%if c_dpi_dir -%}
 DPI_INCDIR ={%for dir in c_dpi_dir%} {{dir}}{%endfor%}
+{%-endif%}
 
 DPI_C_SRC ={%for src in c_dpi_files%} {{src.name}}{%endfor%}
 
 DPI_OBJS  = $(DPI_C_SRC:.c=.o)
 
 %.o: %.c
-	${CC} -fPIC -O2 -I${VCS_HOME}/include -I${DPI_INCDIR} -c $< -o $@
+	${CC} -fPIC -O2 -I${VCS_HOME}/include {%if c_dpi_dir%}-I${DPI_INCDIR}{%endif%} -c $< -o $@
 
 libdpi.so : ${DPI_OBJS}
 	${CC} -shared -fPIC -o $@ $^
